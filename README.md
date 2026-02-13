@@ -1,4 +1,4 @@
-# Retail Forecasting -- Prediccion de Ventas con Machine Learning
+# Retail Forecasting: Prediccion de Ventas con Machine Learning
 
 Sistema integral de prediccion de ventas para retail deportivo, basado en un modelo de Machine Learning (`HistGradientBoostingRegressor`) entrenado con datos historicos de ventas (2021-2024). El proyecto incluye un pipeline completo de procesamiento de datos, entrenamiento del modelo, generacion de predicciones y una aplicacion web interactiva desarrollada con Streamlit para la simulacion de escenarios comerciales en noviembre de 2025.
 
