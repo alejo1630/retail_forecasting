@@ -1,6 +1,6 @@
-# Retail Forecasting -- Prediccion de Ventas con Machine Learning
+# Retail Forecasting: Prediccion de Ventas con Machine Learning
 
-Sistema integral de prediccion de ventas para retail deportivo, basado en un modelo de Machine Learning (`HistGradientBoostingRegressor`) entrenado con datos historicos de ventas (2021-2024). El proyecto incluye un pipeline completo de procesamiento de datos, entrenamiento del modelo, generacion de predicciones y una aplicacion web interactiva desarrollada con Streamlit para la simulacion de escenarios comerciales en noviembre de 2025.
+Sistema de prediccion de ventas para retail deportivo que utiliza `HistGradientBoostingRegressor` entrenado con datos historicos (2021-2024) para forecasting de noviembre 2025. Incluye pipeline de datos, entrenamiento, validacion y una aplicacion Streamlit para simulacion interactiva de escenarios de precios y competencia.
 
 ---
 
@@ -11,9 +11,11 @@ Sistema integral de prediccion de ventas para retail deportivo, basado en un mod
 3. [Datos](#datos)
 4. [Pipeline de Trabajo](#pipeline-de-trabajo)
 5. [Modelo](#modelo)
-6. [Aplicacion Web](#aplicacion-web)
-7. [Instalacion y Ejecucion](#instalacion-y-ejecucion)
-8. [Tecnologias Utilizadas](#tecnologias-utilizadas)
+6. [Resultados del Entrenamiento](#resultados-del-entrenamiento)
+7. [Aplicacion Web](#aplicacion-web)
+8. [Estrategias de Mejora](#estrategias-de-mejora)
+9. [Instalacion y Ejecucion](#instalacion-y-ejecucion)
+10. [Tecnologias Utilizadas](#tecnologias-utilizadas)
 
 ---
 
@@ -151,6 +153,41 @@ Este algoritmo fue seleccionado por su capacidad para manejar eficientemente dat
 
 ---
 
+## Resultados del Entrenamiento
+
+El modelo fue evaluado sobre el conjunto de validacion (ano 2024, 720 registros) utilizando 73 variables predictoras. A continuacion se presentan las metricas obtenidas y su comparacion frente a un baseline naive que predice la media del conjunto de entrenamiento.
+
+### Metricas del modelo vs. baseline
+
+| Metrica | HistGradientBoostingRegressor | Baseline Naive (media) | Mejora relativa |
+|---------|-------------------------------|------------------------|-----------------|
+| MAE     | 1.12 unidades                 | 3.67 unidades          | 69.5%           |
+| RMSE    | 2.39 unidades                 | 6.69 unidades          | 64.3%           |
+| MAPE    | 19.21%                        | 93.02%                 | 79.3%           |
+| R2      | 0.8727                        | -0.0001                | --              |
+
+### Configuracion del entrenamiento
+
+| Parametro | Valor |
+|-----------|-------|
+| Conjunto de entrenamiento | 2,160 registros (2021-2023) |
+| Conjunto de validacion | 720 registros (2024) |
+| Variables predictoras | 73 |
+| learning_rate | 0.03 |
+| max_iter | 400 |
+| max_depth | 7 |
+| l2_regularization | 1.0 |
+| early_stopping | True |
+
+### Interpretacion
+
+- El modelo alcanza un **R2 de 0.8727**, lo que indica que explica aproximadamente el 87% de la varianza en las unidades vendidas.
+- El **MAE de 1.12 unidades** significa que, en promedio, la prediccion se desvfa de la realidad en poco mas de una unidad por producto y dia.
+- El **MAPE de 19.21%** refleja un error porcentual moderado, influenciado por productos con volumenes de venta bajos donde pequenas desviaciones absolutas generan porcentajes elevados.
+- La mejora respecto al baseline supera el 64% en todas las metricas, confirmando que el modelo captura patrones reales de venta mas alla de la simple tendencia central.
+
+---
+
 ## Aplicacion Web
 
 La aplicacion web, desarrollada con **Streamlit**, funciona como un simulador interactivo de ventas. Permite a los usuarios explorar escenarios de precios y competencia para cualquiera de los 24 productos del catalogo.
@@ -188,6 +225,48 @@ Visualizacion de la evolucion diaria de unidades vendidas predichas a lo largo d
 ![Tabla de predicciones](img/App_3.jpg)
 
 Detalle dia a dia con fecha, dia de la semana, precio de venta, precio de la competencia, porcentaje de descuento, unidades predichas e ingresos estimados.
+
+---
+
+## Estrategias de Mejora
+
+A continuacion se proponen lineas de trabajo para mejorar el rendimiento del modelo en futuras iteraciones.
+
+### 1. Optimizacion de hiperparametros
+
+Realizar una busqueda sistematica de hiperparametros mediante `RandomizedSearchCV` o `Optuna`. Los parametros actuales fueron seleccionados de forma conservadora; una exploracion mas amplia de combinaciones de `learning_rate`, `max_iter`, `max_depth`, `min_samples_leaf` y `l2_regularization` podria mejorar el equilibrio entre sesgo y varianza.
+
+### 2. Ingenieria de features adicional
+
+- **Lags extendidos:** Incorporar lags de 14 y 30 dias para capturar patrones quincenales y mensuales.
+- **Features de tendencia:** Calcular la pendiente de ventas en ventanas de 7 y 14 dias para detectar aceleraciones o desaceleraciones.
+- **Interacciones:** Crear variables de interaccion entre `descuento_pct` y `es_fin_de_semana`, o entre `ratio_Precio` y `es_blackfriday`, para capturar efectos combinados.
+- **Codificacion ciclica:** Reemplazar el encoding lineal de `dia_semana` y `mes` por transformaciones seno/coseno para preservar la naturaleza ciclica de estas variables.
+
+### 3. Validacion cruzada temporal
+
+Implementar `TimeSeriesSplit` para una evaluacion mas robusta. La division actual (train 2021-2023 / validation 2024) depende de un unico periodo de validacion. Utilizar multiples particiones temporales permitiria estimar con mayor confianza la capacidad de generalizacion del modelo.
+
+### 4. Ensamble de modelos
+
+Combinar las predicciones de `HistGradientBoostingRegressor` con otros algoritmos como `LightGBM`, `XGBoost` o `Random Forest` mediante un meta-modelo de stacking. La diversidad de algoritmos suele reducir la varianza del error final.
+
+### 5. Tratamiento diferenciado por segmento
+
+Entrenar modelos independientes por categoria (Running, Fitness, Wellness, Outdoor) o por rango de volumen de ventas. Los patrones de demanda pueden variar significativamente entre segmentos, y un modelo especializado podria capturar mejor las particularidades de cada uno.
+
+### 6. Reduccion del MAPE en productos de bajo volumen
+
+El MAPE actual (19.21%) esta influenciado por productos con pocas unidades vendidas por dia. Estrategias posibles:
+- Aplicar una transformacion logaritmica a la variable objetivo para estabilizar la varianza.
+- Utilizar metricas alternativas como WMAPE (Weighted MAPE) que ponderen mas los productos de mayor volumen.
+- Agrupar productos de bajo volumen y entrenar un modelo especifico para ese segmento.
+
+### 7. Incorporacion de datos externos
+
+- **Datos meteorologicos:** La demanda de productos outdoor y running puede correlacionarse con condiciones climaticas.
+- **Indicadores macroeconomicos:** Indice de confianza del consumidor o datos de trafico web como proxies de intencion de compra.
+- **Calendario de campanas promocionales:** Fechas exactas de campanas de marketing propias y de la competencia.
 
 ---
 
